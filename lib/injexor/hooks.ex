@@ -168,7 +168,7 @@ defmodule Injexor.Hooks do
            Enum.find(injects, fn {inject, _behaviour} ->
              full_module == inject or module == inject
            end),
-         inject_module_parts <- inject_module(otp_app, behaviour),
+         inject_module_parts <- inject_module(otp_app, full_module, behaviour),
          true <- {function, arity} in behaviour.behaviour_info(:callbacks) do
       {{:., line0, [{:__aliases__, counter, inject_module_parts}, function]}, line1, args}
     else
@@ -177,8 +177,8 @@ defmodule Injexor.Hooks do
     end
   end
 
-  defp inject_module(otp_app, behaviour) do
-    Application.fetch_env!(otp_app, behaviour)
+  defp inject_module(otp_app, module, behaviour) do
+    Application.get_env(otp_app, behaviour, module)
     |> Module.split()
     |> Enum.map(&String.to_atom/1)
   end
