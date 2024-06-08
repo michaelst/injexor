@@ -50,9 +50,9 @@ defmodule InjexorTest do
     end
 
     InjexorTest.Inject.Example.Mock
-    |> expect(:call, fn "test" -> "ome content" end)
+    |> expect(:call, fn "test" -> "some content" end)
 
-    assert "ome content" = Pipe.call()
+    assert "some content" = Pipe.call()
   end
 
   test "inject when using with" do
@@ -173,6 +173,18 @@ defmodule InjexorTest do
       NoInject.no_inject_call()
     catch
       :exit, {:noproc, {:gen_server, :call, _args}} -> :ok
+    end
+  end
+
+  test "unable to autodetect behaviours" do
+    assert_raise RuntimeError, fn ->
+      defmodule NoBehaviour do
+        use Injexor, otp_app: :my_app, inject: [InjexorTest.Inject.ExampleNoBehaviour]
+
+        def call() do
+          InjexorTest.Inject.ExampleNoBehaviour.call("test")
+        end
+      end
     end
   end
 end

@@ -107,7 +107,6 @@ defmodule Injexor.Hooks do
     {inject, full_module} =
       aliases
       |> Enum.find_value({inject, inject}, fn {alias_as, alias_module} ->
-        # use the full module for the behaviour
         inject == alias_module && {alias_as, alias_module}
       end)
 
@@ -184,12 +183,41 @@ defmodule Injexor.Hooks do
   end
 
   defp behaviour(module) do
-    module.__info__(:attributes)
-    |> Enum.find_value(module, fn {key, value} ->
-      if key == :behaviour do
-        List.first(value)
-      end
+    Enum.find(module.__info__(:attributes), fn {key, _value} ->
+      key == :behaviour
     end)
+    |> case do
+      {:behaviour, [behaviour]} ->
+        behaviour
+
+      {:behaviour, behaviours} ->
+        raise """
+        Unable to autodetect behaviour for module #{inspect(module)}.
+
+        #{module} defines these behaviours: #{inspect(behaviours)}.
+
+        Please specify the behaviour in the inject attribute:
+
+        ```
+        use Injexor,
+          otp_app: :my_app,
+          inject: [{Inject.Example, Inject.ExampleBehaviour}]
+        ```
+        """
+
+      nil ->
+        raise """
+        #{inspect(module)} does not define any behaviours.
+
+        Please specify the behaviour in the inject attribute:
+
+        ```
+        use Injexor,
+          otp_app: :my_app,
+          inject: [{Inject.Example, Inject.ExampleBehaviour}]
+        ```
+        """
+    end
   end
 
   defp module_from_alias(aliases, module) do
