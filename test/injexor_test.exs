@@ -8,20 +8,38 @@ defmodule InjexorTest do
 
   setup_all do
     Application.put_env(
-      :my_app,
+      :injexor,
       InjexorTest.Inject.ExampleBehaviour,
-      InjexorTest.Inject.Example.Mock
+      inject: InjexorTest.Inject.Example.Mock
     )
+
+    Application.put_env(:injexor, :default, Mock)
 
     Hammox.defmock(InjexorTest.Inject.Example.Mock, for: InjexorTest.Inject.ExampleBehaviour)
 
     :ok
   end
 
+  test "uses default mock" do
+    defmodule DefaultMock do
+      # AnotherBehaviour isn't defined in env so it should use the default and add Mock
+      use Injexor,
+        inject: [{InjexorTest.Inject.Example, InjexorTest.Inject.AnotherBehaviour}]
+
+      def call() do
+        InjexorTest.Inject.Example.call([])
+      end
+    end
+
+    InjexorTest.Inject.Example.Mock
+    |> expect(:call, fn [] -> :error end)
+
+    assert :error == DefaultMock.call()
+  end
+
   test "inject with full module" do
     defmodule InjectAll do
       use Injexor,
-        otp_app: :my_app,
         inject: [{InjexorTest.Inject.Example, InjexorTest.Inject.ExampleBehaviour}]
 
       def call() do
@@ -38,7 +56,6 @@ defmodule InjexorTest do
   test "inject when piping" do
     defmodule Pipe do
       use Injexor,
-        otp_app: :my_app,
         inject: [InjexorTest.Inject.Example]
 
       def call() do
@@ -57,7 +74,7 @@ defmodule InjexorTest do
 
   test "inject when using with" do
     defmodule With do
-      use Injexor, otp_app: :my_app, inject: [InjexorTest.Inject.Example]
+      use Injexor, inject: [InjexorTest.Inject.Example]
 
       def call() do
         with {:ok, content} <- InjexorTest.Inject.Example.call("test") do
@@ -74,7 +91,7 @@ defmodule InjexorTest do
 
   test "inject with alias" do
     defmodule InjectAllAlias do
-      use Injexor, otp_app: :my_app, inject: [InjexorTest.Inject.Example]
+      use Injexor, inject: [InjexorTest.Inject.Example]
 
       alias InjexorTest.Inject.Example
 
@@ -91,7 +108,7 @@ defmodule InjexorTest do
 
   test "inject with nested alias" do
     defmodule InjectNestedAlias do
-      use Injexor, otp_app: :my_app, inject: [InjexorTest.Inject.Example]
+      use Injexor, inject: [InjexorTest.Inject.Example]
 
       alias InjexorTest.Inject
 
@@ -108,7 +125,7 @@ defmodule InjexorTest do
 
   test "@inject with full module" do
     defmodule Inject do
-      use Injexor, otp_app: :my_app
+      use Injexor
 
       @inject InjexorTest.Inject.Example
       def call() do
@@ -124,7 +141,7 @@ defmodule InjexorTest do
 
   test "@inject with alias" do
     defmodule InjectAlias do
-      use Injexor, otp_app: :my_app
+      use Injexor
 
       alias InjexorTest.Inject.Example
 
@@ -142,7 +159,7 @@ defmodule InjexorTest do
 
   test "@inject with guard doesn't break guard" do
     defmodule GuardInject do
-      use Injexor, otp_app: :my_app
+      use Injexor
 
       @inject InjexorTest.Inject.Example
       def call(string) when is_binary(string) do
@@ -157,7 +174,7 @@ defmodule InjexorTest do
 
   test "@inject doesn't impact other functions" do
     defmodule NoInject do
-      use Injexor, otp_app: :my_app
+      use Injexor
 
       @inject InjexorTest.Inject.Example
       def call() do
@@ -179,7 +196,7 @@ defmodule InjexorTest do
   test "unable to autodetect behaviours" do
     assert_raise RuntimeError, fn ->
       defmodule NoBehaviour do
-        use Injexor, otp_app: :my_app, inject: [InjexorTest.Inject.ExampleNoBehaviour]
+        use Injexor, inject: [InjexorTest.Inject.ExampleNoBehaviour]
 
         def call() do
           InjexorTest.Inject.ExampleNoBehaviour.call("test")
